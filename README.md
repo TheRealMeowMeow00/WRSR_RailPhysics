@@ -22,7 +22,7 @@ itself and log why — it never writes into changed code.
 | Fuel burn from a speed-ratio curve | Burn follows mechanical power `F·v` actually delivered; idle at standstill |
 | No curve speed limits | Route scanned ahead, `v = √(a_lat·R)` per curve, ETCS-style braking parabola started exactly one braking distance out |
 | Trains fly through stations at full speed | Station track zone capped (`station_limit_kmh`), entered through the braking curve |
-| Stops slam in the last 20 m | Braking parabola to zero ending 25 m out, vanilla's ramp takes over for the final crawl |
+| Stops slam in the last 20 m — customs/border stops at full speed | Braking parabola to zero ending 25 m out (station and customs stops; triggered by route-end position match when the game's own stop intent never fires), vanilla's ramp takes over for the final crawl |
 | Electric trains creep at high power draw | `grid_boost` multiplies the plant outflow ceiling that the whole grid's throughput is divided from |
 
 Low-speed behaviour stays honest (adhesion caps the start); mass of the

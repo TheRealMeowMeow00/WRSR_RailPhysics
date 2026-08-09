@@ -67,7 +67,13 @@ R=2400 → ~210 km/h (at `curve_lateral_ms2 = 1.4`). Watch for:
 Pass-through train: brakes in advance, holds `station_limit_kmh` through
 the platform, accelerates after. Stopping train: smooth parabolic approach
 (`(stop ahead)` in the log), crawling the last metres — no 20 m slam.
-End-of-line and customhouse stops are smooth too.
+End-of-line stops are smooth too. Border crossings: parabolic approach to
+`customs_entry_kmh` at the border fence (`(customs entry)` in the log; the
+one-shot `customs: route obj customhouse … m ahead (geo, gap …)` line
+shows the detected distance and the positional match gap, `customs: route
+end … (no match)` would mean the terminal node sat on no customhouse
+node), then the crawl to the platform, stop, accelerate away after
+clearance.
 
 ## 6. Fuel / electric grid
 

@@ -81,8 +81,13 @@ fast trains actually run. Arcade is for "trains but fun".
 - **`station_limit_kmh`** (60) — cap through station track, pass-through
   included. 30 for yard flavour, 60 mainline (validated).
 - **`smoothstop`** (1) — braking parabola to scheduled stops ending 25 m
-  out, where vanilla's own ramp takes over. Also smooths customhouse and
-  end-of-line stops.
+  out, where vanilla's own ramp takes over. Also smooths end-of-line stops.
+- **`customstop`** (1) — customs/border stops: the route ends at the
+  border until clearance, and its terminal node sits at the same world
+  position as a customhouse track node — the scan matches by position and
+  brakes to **`customs_entry_kmh`** (50) at the entry; the zone-run
+  zero-parabola owns the final ~115 m. A static corridor graph remains as
+  fallback. Needed because the stop-intent flags never fire for customs.
 
 ## Braking keys
 
@@ -112,6 +117,12 @@ fast trains actually run. Arcade is for "trains but fun".
   Read `pa` as "grid delivered fraction" — below ~0.95 your grid is
   throttling the train, not the physics.
 - **`log_curves`** (0) — curve/station/stop limits as computed.
+- **`log_decisions`** (0) — the per-train flight recorder: `decision
+  T…xxxx` event lines when a limiter engages/changes/releases (with
+  distance, limit, geo-match gap, route-left), brake ON/OFF flips against
+  the active limit (a pulsing approach shows as repeated pairs), and a 1 s
+  snapshot while a stop/customs limiter is active. The tool for "why did
+  that train not brake".
 
 Both are write-only diagnostics with no gameplay effect; turn them off for
 normal play.

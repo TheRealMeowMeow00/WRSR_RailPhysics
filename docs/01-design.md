@@ -104,12 +104,16 @@ v_allow(i) = sqrt(v_c(i)^2 + 2 * (service_brake/curve_brake_margin) * dist(i))
 i.e. the train starts braking exactly as far ahead of the curve as its own
 service brake needs, with a margin. Leg orientation comes from the dir byte
 on the first leg and the shared junction node afterwards, so junctions follow
-the *routed* branch — not the geometric one. Results are cached per train and
-recomputed at most every 750 ms; the per-frame helper is a cache lookup under
-a critical section. Yaw continuity across leg boundaries is kept, so a
-junction's diverging curve is measured correctly. Known v1 limitation: a
-mid-route reversal (dead-end station) is sampled as if the path continued —
-station stop logic overrides it anyway.
+the *routed* branch — not the geometric one. Results are cached per train in
+a 1024-slot open-addressed table under a critical section; a cached limit is
+accepted while the scan origin (route vector, current leg, direction) is
+unchanged and the train has moved < 25 m — standing trains never rescan —
+with 750 ms as the moving-train cadence and 10 s as an absolute bound against
+in-place route rewrites. The per-frame helper is a hash lookup. Yaw
+continuity across leg boundaries is kept, so a junction's diverging curve is
+measured correctly. Known v1 limitation: a mid-route reversal (dead-end
+station) is sampled as if the path continued — station stop logic overrides
+it anyway.
 
 ### Electric grid feed
 
@@ -142,12 +146,25 @@ all. Tail overhang is not tracked (head-based constraint).
 
 A scheduled stop's stop point is the end of the route's last leg, and the
 train advertises stop intent at `instance+0xD39` (next station) / `+0xD3C`
-(further stops follow). Distance-to-stop is therefore just the remaining
-route length, computed in the same leg walk. The plugin adds a braking
+(further stops follow) — or, when those bytes never fire (stations are
+chain-local islands the route can't see early), a geo trigger: the route
+ends at the next stop from departure, so a terminal node position-matched
+to a station/customhouse track node means a stop there. Distance-to-stop
+is therefore just the remaining route length, computed in the same leg
+walk. The plugin adds a braking
 parabola to zero, `v_allow = sqrt(2*a*(dist-25m))`, which hands over to
 vanilla's own last-leg ramp (d28 = 0.5, d24 rescale inside 20 m) at 25 m
 out — vanilla's window only fires on the last leg, so the handover is clean.
-This also smooths customhouse and end-of-line stops. Planned braking toward
+This also smooths end-of-line stops. Customhouse stops are covered
+separately (`customstop`): customhouse chains appear in the train's
+route-object vector at assignment time and the route ends at the border
+until clearance, so the scan matches the route's terminal node BY POSITION
+against the customhouse track nodes collected at sweep time — a match
+means the route ends at a customs boundary and the remaining route length
+is the exact distance to it. The train brakes to `customs_entry_kmh` at
+the entry; the zone-run zero-parabola owns the final approach once the
+route extends into the zone. A static corridor graph (8 km Dijkstra from
+every customhouse's nodes) remains as fallback. Planned braking toward
 curves/stations/stops uses exactly `service_brake_ms2` (no vanilla-strength
 floor); the floor is kept only for protective braking (signals, obstacles),
 which the game's own approach logic is tuned for.
