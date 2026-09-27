@@ -1,3 +1,8 @@
+> **Historical.** A snapshot of the 1.x work on soviet-mod-loader (SML),
+> 2026-08-05, kept for its reasoning. It does not describe 2.0: see
+> [CHANGELOG.md](../CHANGELOG.md) and
+> [findings/06-railphysics-2.0.md](findings/06-railphysics-2.0.md).
+
 # HANDOFF — RailPhysics on soviet-mod-loader (SML), customs/station geo-stops
 
 Written 2026-08-05 before a PC reboot. Everything below is the current, verified

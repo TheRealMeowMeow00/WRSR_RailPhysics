@@ -16,7 +16,7 @@
     .text
 
 // ---------------------------------------------------------------- brake
-// Site 0x1406A8443, 16 stolen bytes:
+// Site 0x1406A8553, 16 stolen bytes:
 //     subss  xmm6, xmm0                    ; speed -= decrement
 //     movss  [rsi+0xd24], xmm6
 //     comiss xmm9, xmm6                    ; flags feed the JBE at the continuation
@@ -71,13 +71,19 @@ rp_brake_stub:
     jmp     qword ptr [rip+rp_brake_back]
 
 // ---------------------------------------------------------------- slope
-// Site 0x1406A8566, 21 stolen bytes:
+// Site 0x1406A8676, 21 stolen bytes (uphill drag, s < 0):
 //     mulss  xmm0, xmm10                   ; increment *= s (vanilla drag)
 //     addss  xmm0, [rsi+0xd24]
 //     movss  [rsi+0xd24], xmm0
 // In:  xmm0 = vanilla per-frame increment, xmm10 = s = slopeAvg*-0.5,
 //      xmm15 = divisor, rsi = vehicle. Helper returns a signed gravity delta;
-//      the continuation (0x1406A857B) clamps the result to >= 0 as in vanilla.
+//      the continuation (0x1406A868B) clamps the result to >= 0 as in vanilla.
+//
+// The 1.1.1.9 update added a second apply site at 0x1406A862D (steep-downhill
+// assist, s > 1.0, cap at the effective limit on the continuation 0x1406A8642).
+// Same 21 stolen bytes, same stub shape, separate back slot. It calls
+// rp_slope_helper_a, which marks the vehicle so site B - reached later in the
+// same frame through the opened branch - adds nothing: gravity once a frame.
 
     .globl rp_slope_stub
     .def   rp_slope_stub; .scl 2; .type 32; .endef
@@ -124,10 +130,59 @@ rp_slope_stub:
     movss   dword ptr [rsi+0xd24], xmm0
     jmp     qword ptr [rip+rp_slope_back]
 
+// ---------------------------------------------------------------- slope (downhill assist)
+// Site 0x1406A862D, 21 stolen bytes, same pattern as above. Continuation
+// 0x1406A8642 caps the result at the effective limit (xmm14) - kept.
+
+    .globl rp_slope_stub2
+    .def   rp_slope_stub2; .scl 2; .type 32; .endef
+rp_slope_stub2:
+    push    rbp
+    mov     rbp, rsp
+    and     rsp, -16
+    sub     rsp, 0xA0
+    mov     [rsp+0x00], rax
+    mov     [rsp+0x08], rcx
+    mov     [rsp+0x10], rdx
+    mov     [rsp+0x18], r8
+    mov     [rsp+0x20], r9
+    mov     [rsp+0x28], r10
+    mov     [rsp+0x30], r11
+    movaps  [rsp+0x40], xmm1
+    movaps  [rsp+0x50], xmm2
+    movaps  [rsp+0x60], xmm3
+    movaps  [rsp+0x70], xmm4
+    movaps  [rsp+0x80], xmm5
+
+    mov     rcx, rsi                        // vehicle
+    movaps  xmm1, xmm0                      // vanilla increment
+    movaps  xmm2, xmm10                     // s
+    movaps  xmm3, xmm15                     // divisor
+    call    rp_slope_helper_a               // marks the vehicle: site B skips this frame
+
+    mov     rax, [rsp+0x00]
+    mov     rcx, [rsp+0x08]
+    mov     rdx, [rsp+0x10]
+    mov     r8,  [rsp+0x18]
+    mov     r9,  [rsp+0x20]
+    mov     r10, [rsp+0x28]
+    mov     r11, [rsp+0x30]
+    movaps  xmm1, [rsp+0x40]
+    movaps  xmm2, [rsp+0x50]
+    movaps  xmm3, [rsp+0x60]
+    movaps  xmm4, [rsp+0x70]
+    movaps  xmm5, [rsp+0x80]
+    mov     rsp, rbp
+    pop     rbp
+
+    addss   xmm0, dword ptr [rsi+0xd24]     // apply our signed delta
+    movss   dword ptr [rsi+0xd24], xmm0
+    jmp     qword ptr [rip+rp_slope_back2]
+
 // ---------------------------------------------------------------- curve limit
-// Site 0x1406A8326, 17 stolen bytes:
+// Site 0x1406A8436, 17 stolen bytes:
 //     cmp   byte ptr [rsi+0xd41], r13b   ; roll-out flag
-//     jz    0x1406A8380                  ; rel8 - replayed as an absolute jump
+//     jz    0x1406A8490                  ; rel8 - replayed as an absolute jump
 //     movss xmm6, [rsi+0xd24]
 // In:  rsi = train, xmm9 = final effective limit (km/h). The helper returns
 // min(limit, curveLimit); we move it into xmm9 (non-volatile, so it survives
@@ -183,7 +238,7 @@ rp_curve_stub:
     jmp     qword ptr [rip+rp_curve_branch]
 
 // ---------------------------------------------------------------- grid boost
-// Site 0x1401BDF1C, 16 stolen bytes (plant outflow ceiling computation):
+// Site 0x1401BDF8C, 16 stolen bytes (plant outflow ceiling computation):
 //     mov   rax, [rbp+0x970]
 //     mulss xmm0, [rdi+rbx+0x8c]       ; SIB addressing - keep rbx intact!
 // No register context needed: replay the stolen block verbatim, then scale
@@ -206,6 +261,9 @@ rp_brake_back:
     .quad 0
     .globl rp_slope_back
 rp_slope_back:
+    .quad 0
+    .globl rp_slope_back2
+rp_slope_back2:
     .quad 0
     .globl rp_curve_back
 rp_curve_back:

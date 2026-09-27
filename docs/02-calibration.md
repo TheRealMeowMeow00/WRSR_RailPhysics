@@ -17,7 +17,10 @@ disabled behaves exactly like vanilla.
 | `fuel` | burn follows mechanical power |
 | `curves` | curve speed limits + braking parabola |
 | `stations` | station zone cap |
-| `smoothstop` | braking parabola to scheduled stops |
+| `smoothstop` | smooth approach to scheduled stops |
+| `customstop` | customs zones and stops |
+| `bogies` | pivots of long Workshop cars moved onto their wheelsets |
+| `tilt` | cars leaning into curves at speed (visual) |
 
 ## Validated presets
 
@@ -26,7 +29,7 @@ Set these as a group, not piecemeal:
 | Key | Strict realism | **Balanced (default)** | Arcade |
 |---|---|---|---|
 | `power_scale` | 1.0 | **1.35** | 1.6 |
-| `curve_lateral_ms2` | 1.0 | **1.4** | 1.6 |
+| `curve_lateral_ms2` | 1.7 | **2.8** | 3.2 |
 | `grid_boost` | 1.0 | **2.0** | 2.5 |
 
 Strict realism is honest but demanding: a 10 MW high-speed trainset needs
@@ -65,38 +68,65 @@ fast trains actually run. Arcade is for "trains but fun".
 
 ## Curve keys
 
-- **`curve_lateral_ms2`** (1.4) — lateral acceleration limit, the single
-  "how much curves slow trains" knob. Includes a superelevation allowance
-  the track geometry cannot express. See the preset table in the ini.
+- **`curve_lateral_ms2`** (2.8) — lateral acceleration limit, the single
+  "how much curves slow trains" knob: `v = √(a·R)`. Includes a
+  superelevation allowance the track geometry cannot express. 2.0 measures
+  radii correctly — 1.x read them twice too large — so the scale doubled:
+  2.8 now gives the speeds 1.4 gave. Real railways allow about 1.7 (160 mm
+  cant plus 100 mm deficiency).
 - **`curve_brake_margin`** (1.25) — braking budget divisor; larger = brake
   earlier. 1.0 brakes at the theoretical last moment (do not).
 - **`curve_lookahead_m`** (1200) — floor of the scan window; the real
   horizon auto-extends to the full-stop braking distance + 150 m (cap 8 km).
-- **`log_curves`** (0) — writes `curve: v=… limit=… R=…` per train when a
-  limit is active. Your calibration tool: R is the tightest radius the
-  scanner found.
+- **`log_curves`** (0) — logs each curve slower than 100 km/h once, with
+  the tightest radius the scanner found and the window it was measured
+  over, and a line when track kinks were ignored. Your calibration tool.
 
 ## Station / stop keys
 
-- **`station_limit_kmh`** (60) — cap through station track, pass-through
+Stations and customs follow one rule in 2.0: the zone speed is held from
+the zone's first switch to the stop, and on the way out until the tail —
+the consist's real length — has left the zone. Zones of one kind less than
+1 km apart are one complex.
+
+- **`station_limit_kmh`** (60) — speed through station track, pass-through
   included. 30 for yard flavour, 60 mainline (validated).
-- **`smoothstop`** (1) — braking parabola to scheduled stops ending 25 m
-  out, where vanilla's own ramp takes over. Also smooths end-of-line stops.
-- **`customstop`** (1) — customs/border stops: the route ends at the
-  border until clearance, and its terminal node sits at the same world
-  position as a customhouse track node — the scan matches by position and
-  brakes to **`customs_entry_kmh`** (50) at the entry; the zone-run
-  zero-parabola owns the final ~115 m. A static corridor graph remains as
-  fallback. Needed because the stop-intent flags never fire for customs.
+- **`customs_entry_kmh`** (50) — the same for customs track. Customs count
+  only for a train whose route is bound for that customhouse.
+- **`smoothstop`** / **`customstop`** (1) — the approach to a stop: the
+  target is where the route ends on the facility's own track, the braking
+  parabola never drops below **`stop_release_kmh`** (15), and the game makes
+  the final stop. Never 0: a limit of 0 short of the target is what froze
+  trains in 1.x.
 
 ## Braking keys
 
-- **`service_brake_ms2`** (0.8) — service deceleration.
-- **`emergency_brake_ms2`** (1.3) — emergency deceleration.
+- **`service_brake_ms2`** (1.6 shipped) — service deceleration; planned
+  braking of passenger trains rides a parabola at this over
+  `curve_brake_margin`.
+- **`freight_brake_ms2`** (0.8) — planned braking of a consist without
+  passengers: softer and earlier.
+- **`emergency_brake_ms2`** (2.6 shipped) — emergency deceleration.
 - **`brake_min_vanilla_ratio`** (1.0) — protective-braking floor: never
   brake weaker than vanilla × ratio. Planned braking (to curves/stations/
   stops) ignores the floor and rides the parabola. Set below 1 only if you
   accept overshoots at signals as a gameplay feature.
+
+## Bogies and tilt
+
+- **`bogies`** (1) — a car type left on the default pivots (3 m from each
+  end, because its ini sets no `$TRAIN_*_AXIS_DISTANCE`) gets its pivots at
+  its modelled wheelsets, read once from its `main.nmf`. Base-game models
+  and cars that set the values are left alone.
+- **`tilt`** (1) — passenger cars lean into curves at speed by
+  `tilt_gain · atan(v²/(g·R))`. Visual only: speeds and physics do not
+  change.
+  - **`tilt_max_deg`** (5) — the most a car leans. Models are rigid: past
+    ~6° the wheels visibly lift off one rail.
+  - **`tilt_gain`** (0.5) — the share of the lateral-acceleration angle.
+  - **`tilt_min_kmh`** (80) — no lean below this; full lean 40 km/h above.
+  - **`tilt_rate_deg_s`** (4) — roll rate, degrees per second of game time.
+  - **`tilt_freight`** (0) — 1 lets freight lean too.
 
 ## Fuel / grid keys
 
@@ -116,13 +146,14 @@ fast trains actually run. Arcade is for "trains but fun".
   `v / mass / P / F / R / G / a` plus `fuel: v / Pmech / load / pa`.
   Read `pa` as "grid delivered fraction" — below ~0.95 your grid is
   throttling the train, not the physics.
-- **`log_curves`** (0) — curve/station/stop limits as computed.
+- **`log_curves`** (0) — each slow curve once, with its radius (see above).
 - **`log_decisions`** (0) — the per-train flight recorder: `decision
-  T…xxxx` event lines when a limiter engages/changes/releases (with
-  distance, limit, geo-match gap, route-left), brake ON/OFF flips against
-  the active limit (a pulsing approach shows as repeated pairs), and a 1 s
-  snapshot while a stop/customs limiter is active. The tool for "why did
-  that train not brake".
+  T…xxxx` lines when the binding limit changes kind (`engage … limit=…
+  v=… len=… passenger|freight`, `release …`), when a stop is armed, served
+  or dropped, brake ON/OFF flips against the limit, and a 1 s snapshot
+  (`snap v=… limit=… stop=… odo=…`) near a station or customs. The tool for
+  "why did that train brake / not brake". With `log_physics` it also prints
+  the tilt peak every 30 s.
 
 Both are write-only diagnostics with no gameplay effect; turn them off for
 normal play.

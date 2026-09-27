@@ -40,6 +40,7 @@ static BYTE*            g_exeBase;
 static SIZE_T           g_exeSize;
 static HMODULE          g_engine;
 static const char*      g_baseDir;
+static const char*      g_vfsRoot;   // v4+; null against an older host - see TsmBind
 static CRITICAL_SECTION g_lock;
 
 // Logf(...) rather than H->log(...), because that is what several hundred lines
@@ -54,6 +55,12 @@ static void TsmBind(const TsmHost* host)
     g_exeSize = host->exeSize;
     g_engine  = (HMODULE)host->engineModule;
     g_baseDir = host->baseDir;
+
+    // vfsRoot is appended after `consume`, so structSize is what tells an old
+    // host's smaller TsmHost apart from one that actually has this field.
+    if (host->structSize >= offsetof(TsmHost, vfsRoot) + sizeof(host->vfsRoot))
+        g_vfsRoot = host->vfsRoot;
+
     InitializeCriticalSection(&g_lock);
 }
 
