@@ -196,3 +196,7 @@ verification, route re-entry). Highlights from the validation runs: a
 grade, a 380 t / 10 MW trainset reaching 330 km/h (the track limit) with
 `power_scale = 1.35`, and `pa = 1.00` grid delivery under a full 13.5 MW
 request with `grid_boost = 2.0`.
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

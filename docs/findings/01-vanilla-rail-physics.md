@@ -380,3 +380,7 @@ Prefer code hooks; most float constants are pooled and reused elsewhere.
 - DAT_1409d54c0 exact semantics (setting id; 2 = fuel on). Written in FUN_14028c700. **[I]**
 - FUN_1406c1540 (forces limit 0) and FUN_1406ac5d0 (stop-at-position check) — condition
   helpers not fully decoded. **[?]**
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

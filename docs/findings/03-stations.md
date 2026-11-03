@@ -190,3 +190,7 @@ Precision notes:
 - Metro/tram stations: metro uses its own station buildings; their $TYPE ids are outside
   the dumped chain range (strings like "metro_endstation" exist). If metro support is
   wanted, extend the table — the chain mechanism is shared. [?]
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

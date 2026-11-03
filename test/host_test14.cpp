@@ -1,3 +1,9 @@
+// RailPhysics - https://github.com/TheRealMeowMeow00/WRSR_RailPhysics
+// Copyright (C) 2026 TheRealMeowMeow00
+// SPDX-License-Identifier: GPL-3.0-only
+// Reusing this file? Keep this header and credit RailPhysics - see
+// "Building on RailPhysics" in the README.
+
 // Offline harness for railphysics 2.0: maps SOVIET64.exe as an image (no code
 // from it runs) so TsmPluginInit resolves every signature against the real
 // bytes, then drives the approach core through scenarios built at the object
@@ -543,6 +549,59 @@ static void TestCurves(void)
           minV, g.curveLat, want);
 }
 
+// Curve speed by class: straight 1000 m, an arc of radius R over arcLen m,
+// straight again; the lowest speed the train is held to.
+static double ArcRun(double R, double arcLen, int passenger, int tilting)
+{
+    P2* pts = (P2*)calloc(2000, sizeof(P2));
+    int n = 0;
+    for (double z = 0; z <= 1000; z += 5) { pts[n].x = 0; pts[n].z = z; ++n; }
+    double th = 0;
+    for (double s = 5; s <= arcLen; s += 5) { th = s / R; pts[n].x = R - R * cos(th); pts[n].z = 1000 + R * sin(th); ++n; }
+    double ex = pts[n - 1].x, ez = pts[n - 1].z;
+    for (double s = 5; s <= 1500; s += 5) { pts[n].x = ex + s * sin(th); pts[n].z = ez + s * cos(th); ++n; }
+
+    SetChains(NULL, 0);
+    int keep = g_tiltLive;
+    g_tiltLive = tilting;
+    Path p = BuildPath(pts, n, 50.0);
+    Tr t = MakeTrain(passenger, p.segs, p.n, 8, NULL, 0);
+    t.rev = p.rev;
+    t.speed = 200.0;
+    double minV = 1e9;
+    while (1)
+    {
+        Frame(&t, 0.016, 200.0);
+        if (t.speed < minV) minV = t.speed;
+        if (Advance(&t, t.speed / 3.6 * 0.016)) break;
+    }
+    g_tiltLive = keep;
+    return minV;
+}
+
+static void TestCurveClasses(void)
+{
+    printf("\n== curve speed by class: freight %.1f, passenger %.1f, tilting %.1f m/s2\n",
+           g.curveLatFreight, g.curveLat, g.curveLatTilt);
+    double f = ArcRun(500, 400, 0, 0), p = ArcRun(500, 400, 1, 0), t = ArcRun(500, 400, 1, 1);
+    double wf = sqrt(g.curveLatFreight * 500) * 3.6, wp = sqrt(g.curveLat * 500) * 3.6, wt = sqrt(g.curveLatTilt * 500) * 3.6;
+    Check(fabs(f - wf) <= 3.0, "R 500 m, freight: %.1f km/h (want %.1f)", f, wf);
+    Check(fabs(p - wp) <= 3.0, "R 500 m, passenger: %.1f km/h (want %.1f)", p, wp);
+    Check(fabs(t - wt) <= 3.0, "R 500 m, tilting: %.1f km/h (want %.1f, leaning fully)", t, wt);
+
+    // R 250: sqrt(4.2 R) = 117 km/h is inside the 80-120 km/h lean band, so the
+    // allowance is partial: v^2 = R a(v) with a rising 2.8 -> 4.2 across it.
+    double v0 = g.tiltMinKmh / 3.6, v1 = (g.tiltMinKmh + 40) / 3.6;
+    double k = (g.curveLatTilt - g.curveLat) / (v1 - v0), b = 250 * k, c = 250 * (g.curveLat - k * v0);
+    double wb = 0.5 * (b + sqrt(b * b + 4 * c)) * 3.6;
+    double tb = ArcRun(250, 300, 1, 1), pb = ArcRun(250, 300, 1, 0);
+    Check(fabs(tb - wb) <= 3.0 && tb > pb + 5.0, "R 250 m, tilting in the lean band: %.1f km/h (want %.1f; passenger %.1f)", tb, wb, pb);
+
+    // R 100: even the tilting value gives 74 km/h, below tilt_min_kmh - no lean, no allowance.
+    double tl = ArcRun(100, 150, 1, 1), pl = ArcRun(100, 150, 1, 0);
+    Check(fabs(tl - pl) <= 1.0, "R 100 m, too slow to lean: tilting %.1f = passenger %.1f km/h", tl, pl);
+}
+
 // A straight line off the z axis where dense spline points meet legs that
 // have only their two nodes (as a building's own track may). The walk lists a
 // shared node twice; a window whose only neighbour on one side is that
@@ -891,6 +950,7 @@ int main(int argc, char** argv)
     TestDeadlock();
     TestStation();
     TestCurves();
+    TestCurveClasses();
     TestSparseJoin();
     TestTornRead();
     TestSlots();

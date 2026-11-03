@@ -191,3 +191,7 @@ the game: a pass says nothing about whether a hook fires in game.
   right along +z. The curve tests now include lines at an angle.
 - A test map without the facility you changed tests nothing: the 2.0
   station logic went untested through two maps without a station.
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

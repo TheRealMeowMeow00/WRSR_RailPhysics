@@ -22,12 +22,12 @@ affected subsystem skip itself and log why — it never writes into changed code
 | Braking = acceleration / 3, always | Independent service/emergency rates (m/s²); planned braking to curves, stations and stops — softer for freight |
 | Gravity only pulls uphill, downhill does nothing | Signed grade force — descents push the train |
 | Fuel burn from a speed-ratio curve | Burn follows mechanical power `F·v` actually delivered; idle at standstill |
-| No curve speed limits | Route scanned ahead, `v = √(a_lat·R)` per curve, braking parabola started one braking distance out, limit held until the tail leaves the curve; track kinks (bridge joins) ignored |
+| No curve speed limits | Route scanned ahead, `v = √(a_lat·R)` per curve with `a_lat` per class (freight / passenger / tilting), braking parabola started one braking distance out, limit held until the tail leaves the curve; track kinks (bridge joins) ignored |
 | Trains fly through stations at full speed | Station track held at `station_limit_kmh` from the first switch until the tail has left |
 | Some customs stop, others are crossed at full speed | Customs held at `customs_entry_kmh` the same way; a two-zone border is one complex |
 | Stops slam in the last 20 m | The approach to a stop brakes smoothly and never drops below `stop_release_kmh`; the game makes the final stop |
 | Long Workshop cars pivot 3 m from their ends — wheels off the rails in tight curves | `bogies`: pivots read from the model's wheelsets |
-| Cars stay upright in curves | `tilt`: passenger cars lean into curves at speed (visual only) |
+| Cars stay upright in curves | `tilt`: passenger cars lean into curves at speed — and, like real tilting trains, take them faster |
 | Electric trains creep at high power draw | `grid_boost` multiplies the plant outflow ceiling the grid's throughput is divided from |
 
 Every limit is planned in metres along the route, never in time, so trains
@@ -40,11 +40,16 @@ high-speed trainset on decent track reaches 300+ km/h; a heavy freight on a
 
 ## Install
 
-1. Install tesmioloader (the loader this plugin runs on).
-2. Copy `railphysics.dll` and `railphysics.ini` into
-   `<game>/tesmioloader/build/plugins/`.
-3. Start the game. The loader log (`tesmioloader.log`) should say
-   `10 subsystem(s) patched` and show no `does not match` lines.
+The plugin runs under tesmioloader or Republic Mod Loader. In the Workshop
+item `railphysics.dll` and `railphysics.ini` sit in `plugins/`; settings are
+read from the ini beside the DLL.
+
+- **Republic Mod Loader:** subscribe to the item, the loader picks the plugin
+  up from its `plugins/`.
+- **tesmioloader:** copy both files into `<game>/tesmioloader/build/plugins/`.
+
+Start the game. The loader log should say `10 subsystem(s) patched`, name the
+ini in a `settings from <path>` line and show no `does not match` lines.
 
 Updating from 1.x: replace both files — the ini has new keys and the curve
 setting is on a new scale (see the changelog). Uninstall: delete the two
@@ -67,7 +72,7 @@ switched independently, and three presets are documented at the top of the
 file (strict realism / balanced / arcade). Highlights:
 
 - `power_scale` — arcade multiplier on engine power (adhesion keeps starts honest)
-- `curve_lateral_ms2` — how hard curves bite (1.7 strict … 3.2 arcade, 2.8 default)
+- `curve_lateral_ms2`, `curve_lateral_freight_ms2`, `curve_lateral_tilt_ms2` — how hard curves bite, per class (2.8 / 2.1 / 4.2 by default)
 - `grade_scale` — how steep the terrain feels (0.06 makes 10 % ramps a wall)
 - `station_limit_kmh`, `customs_entry_kmh`, `stop_release_kmh` — stations, customs, stops
 - `service_brake_ms2`, `freight_brake_ms2` — planned braking, passenger and freight
@@ -109,6 +114,40 @@ project).
   electric grid feed, and the 2.0 findings (positions, consists, bogies, the
   car transform)
 
+## Building on RailPhysics
+
+You are welcome to learn from this code and these findings, fork them and
+build your own mods on them — that is why the source and the
+reverse-engineering notes are public. If you publish something that uses
+them — whether you copied the code, ported it, or had an AI assistant rewrite
+it from the code or the docs:
+
+- **Say where it came from.** Name RailPhysics and link this repository in
+  your description and README.
+- **Keep the notices.** Leave the header at the top of every file you took;
+  the GPL requires it.
+- **Publish your source under GPL v3.** The license again: a plugin built
+  from this one ships its source.
+- **Use your own name and say what you changed**, so nobody mistakes your
+  version for this one — or blames either of us for the other's bugs.
+- **Credit what this project credits** (below) if you use those parts.
+
+Reimplementing an idea from scratch is fair game — ideas are free. Passing
+someone else's work off as your own is not.
+
+## Credits
+
+- [tesmioloader](https://github.com/MaxLegend/TesmioLoader) by MaxLegend —
+  the plugin host this runs on; `src/tesmio_api.h` and `src/tesmio_plugin.h`
+  are vendored from it unchanged.
+- [railspeed](https://github.com/SosseTurner/Railspeed-Plugin-for-Workers-and-Resources)
+  by SosseTurner — the infrastructure speed-limit lookup (`0x1403BCEB0`), the
+  starting point for finding the rail movement update, came from it.
+- Written with AI coding agents; design decisions, in-game testing and
+  calibration by TheRealMeowMeow00.
+
 ## License
 
 GPL v3 (same as tesmioloader). See [LICENSE](LICENSE).
+Copyright (C) 2026 TheRealMeowMeow00. Every source file carries an SPDX
+header; keep it when you reuse the file.

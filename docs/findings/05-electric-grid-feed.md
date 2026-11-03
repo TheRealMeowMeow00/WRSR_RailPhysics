@@ -185,3 +185,7 @@ scaling path. **[C]**
 - Plant grid throughput: ≤ storage capacity per second (≈ production/3; 70-unit plant →
   23.34/s), shared by shortfall across all receivers.
 - Observed 0.48 ⇒ trafo receives ≈ 2.35 units/s from the grid under those conditions. **[I]**
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

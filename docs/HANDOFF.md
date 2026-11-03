@@ -349,3 +349,7 @@ Full narrative: `docs/findings/04-stops.md` Q6–Q8. Essentials:
   FF 25 + trampoline), findIatSlot/patchIat, faultFilter; provide/consume are
   inert stubs (deposits/depletion are NOT portable because of this + VFS).
 - Never git-commit without the user's explicit say-so.
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

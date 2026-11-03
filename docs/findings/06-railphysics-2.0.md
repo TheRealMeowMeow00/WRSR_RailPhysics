@@ -150,3 +150,7 @@ logic with the wall clock and broke at x4: a train stood 24 s before a stop
 until the game was paused. 2.0 measures only distance — the odometer, the
 scan spacing (40–150 m travelled), a stop served within 25 m at under
 1 km/h, and the tilt rate (distance over speed is game time).
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

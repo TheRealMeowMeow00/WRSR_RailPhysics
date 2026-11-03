@@ -1,4 +1,10 @@
 #!/bin/bash
+# RailPhysics - https://github.com/TheRealMeowMeow00/WRSR_RailPhysics
+# Copyright (C) 2026 TheRealMeowMeow00
+# SPDX-License-Identifier: GPL-3.0-only
+# Reusing this file? Keep this header and credit RailPhysics - see
+# "Building on RailPhysics" in the README.
+
 # build-linux.sh - build railphysics.dll on Linux with llvm-mingw (clang).
 #
 # The plugin is plain C++ + two GNU-as stubs; llvm-mingw compiles it as-is.

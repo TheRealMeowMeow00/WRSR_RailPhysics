@@ -1,3 +1,9 @@
+# RailPhysics - https://github.com/TheRealMeowMeow00/WRSR_RailPhysics
+# Copyright (C) 2026 TheRealMeowMeow00
+# SPDX-License-Identifier: GPL-3.0-only
+# Reusing this file? Keep this header and credit RailPhysics - see
+# "Building on RailPhysics" in the README.
+
 """nmfdump - list the objects inside a Workers & Resources .nmf model.
 
 Format as read from CR400AF (Workshop 3019370041), not from any spec:

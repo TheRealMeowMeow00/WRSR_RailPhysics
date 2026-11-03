@@ -640,3 +640,7 @@ NEIGHBOUR 1.6 km beyond (this customhouse has no mainline seed), and the
 clamp's decrease bound prevented the correct geo estimate from displacing
 the corridor one. Any one of the three fixes (min-clamp) removes the slam;
 the zeroClamp removes the fence flapping. **[C]**
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

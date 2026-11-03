@@ -30,6 +30,8 @@ Set these as a group, not piecemeal:
 |---|---|---|---|
 | `power_scale` | 1.0 | **1.35** | 1.6 |
 | `curve_lateral_ms2` | 1.7 | **2.8** | 3.2 |
+| `curve_lateral_freight_ms2` | 1.3 | **2.1** | 2.4 |
+| `curve_lateral_tilt_ms2` | 2.6 | **4.2** | 4.8 |
 | `grid_boost` | 1.0 | **2.0** | 2.5 |
 
 Strict realism is honest but demanding: a 10 MW high-speed trainset needs
@@ -73,7 +75,14 @@ fast trains actually run. Arcade is for "trains but fun".
   superelevation allowance the track geometry cannot express. 2.0 measures
   radii correctly — 1.x read them twice too large — so the scale doubled:
   2.8 now gives the speeds 1.4 gave. Real railways allow about 1.7 (160 mm
-  cant plus 100 mm deficiency).
+  cant plus 100 mm deficiency). Since 2.0.1 this is the passenger value.
+- **`curve_lateral_freight_ms2`** (2.1) and **`curve_lateral_tilt_ms2`**
+  (4.2) — the same limit for freight and for a train that leans. The real
+  ratios are 0.75 : 1 : 1.5; left out of the ini, these two are 0.75x and
+  1.5x of `curve_lateral_ms2`. A tilting train (a passenger train while
+  `tilt` is on, freight too with `tilt_freight = 1`) earns its allowance only
+  as it leans: none below `tilt_min_kmh`, all of it 40 km/h above, so in
+  station throats it is a passenger train like any other.
 - **`curve_brake_margin`** (1.25) — braking budget divisor; larger = brake
   earlier. 1.0 brakes at the theoretical last moment (do not).
 - **`curve_lookahead_m`** (1200) — floor of the scan window; the real
@@ -157,3 +166,7 @@ the consist's real length — has left the zone. Zones of one kind less than
 
 Both are write-only diagnostics with no gameplay effect; turn them off for
 normal play.
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

@@ -1,3 +1,9 @@
+// RailPhysics - https://github.com/TheRealMeowMeow00/WRSR_RailPhysics
+// Copyright (C) 2026 TheRealMeowMeow00
+// SPDX-License-Identifier: GPL-3.0-only
+// Reusing this file? Keep this header and credit RailPhysics - see
+// "Building on RailPhysics" in the README.
+
 // stubs.S - register-context bridges for railphysics' mid-function hooks.
 //
 // The loader's inline hook turns the site into a 14-byte absolute jump to the

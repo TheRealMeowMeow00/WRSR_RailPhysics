@@ -1,3 +1,9 @@
+// RailPhysics - https://github.com/TheRealMeowMeow00/WRSR_RailPhysics
+// Copyright (C) 2026 TheRealMeowMeow00
+// SPDX-License-Identifier: GPL-3.0-only
+// Reusing this file? Keep this header and credit RailPhysics - see
+// "Building on RailPhysics" in the README.
+
 // railphysics - realistic rail vehicle dynamics.
 //
 // The vanilla rail update (SOVIET64.exe 1.1.1.9, FUN_1406a7520) drives a train
@@ -248,7 +254,9 @@ static struct Cfg
     float tiltRate;         // radians per second of game time
     int   tiltFreight;      // freight leans too
     float stationLimit;     // km/h through station track
-    float curveLat;         // lateral accel comfort limit in curves, m/s^2
+    float curveLat;         // lateral accel limit in curves, passenger trains, m/s^2
+    float curveLatFreight;  // the same for freight
+    float curveLatTilt;     // the same for a train that leans (see "tilt")
     float curveMargin;      // braking-budget safety divisor (>1 = brake earlier)
     float curveLookahead;   // meters of path scanned ahead
     int   logCurves;
@@ -435,6 +443,7 @@ static void ComputePhysicsCached(void* veh, Physics* out)
 // (powerAvail) and its clamp to the speed limit.
 static int g_slopeLive;              // the slope hook applies gravity
 static int g_approachLive;           // the curve hook runs the approach core
+static int g_tiltLive;               // cars lean: the car-transform call is ours
 
 static float RailDivisor(void* veh)
 {
@@ -1117,6 +1126,7 @@ struct Train
 
     float    length;                    // consist length, m
     BYTE     passenger;
+    BYTE     tilting;                   // leans in curves: takes them faster (see "tilt")
     float    planRate;                  // m/s^2 the parabolas are braked at
     float    aPlan;                     // planRate / margin: what they are planned with
 
@@ -1516,6 +1526,37 @@ static float EvalCap(Train* t, int* kindOut)
     return (float)best;
 }
 
+// Curve speed by class, km/h: v = sqrt(a R) with a per class - the real
+// ratios, freight : passenger : tilting = 0.75 : 1 : 1.5 (cant deficiency
+// allowed a freight, a conventional and a tilting train), all scaled for the
+// game's compact maps. A tilting train only earns its extra allowance while it
+// leans, and it leans only at speed (tilt_min_kmh, full 40 km/h above): in the
+// band between, the allowance grows with the lean. Solving v^2 = R a(v) with
+// a(v) linear across the band keeps the limit continuous in R.
+static double CurveSpeedKmh(const Train* t, double R)
+{
+    double ap = t->passenger ? g.curveLat : g.curveLatFreight;
+    double vp = sqrt(ap * R);                               // m/s
+    if (!t->tilting || g.curveLatTilt <= ap) return vp * 3.6;
+    double at = g.curveLatTilt;
+    double vt = sqrt(at * R);
+    double v0 = g.tiltMinKmh / 3.6, v1 = (g.tiltMinKmh + 40.0) / 3.6;
+    if (vt >= v1) return vt * 3.6;                          // leaning fully at that speed
+    if (vt <= v0) return vp * 3.6;                          // never leans in this curve
+    double k = (at - ap) / (v1 - v0);
+    double b = R * k, c = R * (ap - k * v0);
+    double d = b * b + 4.0 * c;
+    double v = d > 0.0 ? 0.5 * (b + sqrt(d)) : vp;
+    if (v < vp) v = vp;
+    if (v > vt) v = vt;
+    return v * 3.6;
+}
+
+static const char* TrainClass(const Train* t)
+{
+    return t->tilting ? "tilting" : t->passenger ? "passenger" : "freight";
+}
+
 // Curvature -> curve intervals. Heading change over a +/-10 m window gives
 // the radius: the two chords lo->i and i->hi point along the tangents at
 // their midpoints, which are span/2 apart along the track, so R = span / 2 /
@@ -1569,7 +1610,7 @@ static void CurveIntervals(Train* t, int npts, double horizon)
         }
         double R = 0.5 * spanN / yawN;
         if (R < 10.0) R = 10.0;
-        float vc = (float)(sqrt((double)g.curveLat * R) * 3.6);
+        float vc = (float)CurveSpeedKmh(t, R);
         if (vc > 400.0f) continue;
         if (haveRun && s - runTo <= 30.0)
         {
@@ -1709,6 +1750,7 @@ static void Rescan(Train* t, BYTE* v, void* route, long routeN, float speed, DWO
     ConsistInfo(v, &len, &pass);
     t->length    = len;
     t->passenger = (BYTE)pass;
+    t->tilting   = (BYTE)(g_tiltLive && (pass || g.tiltFreight));
     t->planRate  = pass ? g.serviceBrake : g.freightBrake;
     if (t->planRate < 0.05f) t->planRate = 0.05f;
     t->aPlan     = t->planRate / (g.curveMargin > 1.0f ? g.curveMargin : 1.0f);
@@ -1755,7 +1797,7 @@ static void DecisionLog(Train* t, float speed, float cap, int kind, DWORD now)
     {
         if (kind != K_NONE)
             Logf("railphysics  decision T…%04x engage %s limit=%.0f v=%.0f len=%.0f %s",
-                 tag, g_kindNames[kind], cap, speed, t->length, t->passenger ? "passenger" : "freight");
+                 tag, g_kindNames[kind], cap, speed, t->length, TrainClass(t));
         else
             Logf("railphysics  decision T…%04x release %s v=%.0f", tag, g_kindNames[t->lastKind], speed);
         t->lastKind = (BYTE)kind;
@@ -1831,7 +1873,7 @@ static float CurveLimitFor(void* veh, float* planRate)
     {
         t->lastLimit = cap;
         Logf("railphysics  limit: v=%.0f km/h limit=%.0f km/h (%s) len=%.0f m %s",
-             speed, cap, g_kindNames[kind], t->length, t->passenger ? "passenger" : "freight");
+             speed, cap, g_kindNames[kind], t->length, TrainClass(t));
     }
 
     static DWORD lastStats = 0;
@@ -2282,6 +2324,7 @@ static bool PatchNodeCall(void)
     *(INT32*)(site + 2) = (INT32)delta;
     VirtualProtect(site + 2, 4, prot, &prot);
     FlushInstructionCache(GetCurrentProcess(), site, 6);
+    g_tiltLive = 1;
     Logf("railphysics  tilt: car transform call at +%08X redirected (max %.1f deg, gain %.2f, from %.0f km/h%s)",
          (unsigned)(site - g_exeBase), g.tiltMax * 57.2958f, g.tiltGain, g.tiltMinKmh,
          g.tiltFreight ? ", freight too" : ", passenger trains");
@@ -2390,10 +2433,54 @@ static void ResolveSites(void)
 
 // ---------------------------------------------------------------- setup
 
+// The ini beside this DLL, as an absolute path, or empty when there is none.
+// A config name handed to the host resolves against the loader's own folder:
+// that is tesmioloader's build\, where plugins\railphysics.ini sits next to
+// the DLL, but Republic Mod Loader resolves it elsewhere, finds nothing and
+// every setting silently falls back to its default. So the file beside the
+// DLL is read first - the same file under tesmioloader, the item's plugins\
+// under RML - and the host stays the fallback for a layout without it.
+static char g_iniBeside[MAX_PATH];
+
+static void FindIniBesideDll(void)
+{
+    HMODULE self;
+    char p[MAX_PATH];
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            (LPCSTR)&FindIniBesideDll, &self))
+        return;
+    DWORD n = GetModuleFileNameA(self, p, sizeof(p));
+    if (n == 0 || n >= sizeof(p))
+        return;
+    char* slash = strrchr(p, '\\');
+    if (!slash || (size_t)(slash + 1 - p) + sizeof("railphysics.ini") > sizeof(p))
+        return;
+    strcpy(slash + 1, "railphysics.ini");
+    if (GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES)
+        strcpy(g_iniBeside, p);
+}
+
+static int CfgString(const char* ini, const char* key, char* out, int outSize)
+{
+    if (g_iniBeside[0])
+        return (int)GetPrivateProfileStringA("railphysics", key, "", out, (DWORD)outSize, g_iniBeside);
+    return H->configString(ini, "railphysics", key, out, outSize, "");
+}
+
+static int CfgInt(const char* ini, const char* key, int fallback)
+{
+    if (!g_iniBeside[0])
+        return H->configInt(ini, "railphysics", key, fallback);
+    char v[32];
+    if (CfgString(ini, key, v, sizeof(v)) && v[0])
+        return atoi(v);
+    return fallback;
+}
+
 static float CfgFloat(const char* ini, const char* key, float fallback)
 {
     char v[64];
-    if (H->configString(ini, "railphysics", key, v, sizeof(v), "") && v[0])
+    if (CfgString(ini, key, v, sizeof(v)) && v[0])
         return (float)atof(v);
     return fallback;
 }
@@ -2408,32 +2495,36 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const TsmHost* host, TsmPlugi
     TsmBind(host);
 
     info->name    = "railphysics";
-    info->version = "2.0.0";
+    info->version = "2.0.2";
 
     const char* ini = "plugins\\railphysics.ini";
+    FindIniBesideDll();
+    Logf("railphysics  settings from %s", g_iniBeside[0] ? g_iniBeside : "the loader's plugins\\railphysics.ini");
 
-    if (!H->configInt(ini, "railphysics", "enabled", 1))
+    if (!CfgInt(ini, "enabled", 1))
     {
         Logf("railphysics  enabled = 0, nothing to do");
         return 1;
     }
 
-    g.accel           = H->configInt(ini, "railphysics", "accel", 1);
-    g.brake           = H->configInt(ini, "railphysics", "brake", 1);
-    g.slope           = H->configInt(ini, "railphysics", "slope", 1);
-    g.fuel            = H->configInt(ini, "railphysics", "fuel", 1);
-    g.curves          = H->configInt(ini, "railphysics", "curves", 1);
-    g.stations        = H->configInt(ini, "railphysics", "stations", 1);
-    g.smoothStop      = H->configInt(ini, "railphysics", "smoothstop", 1);
-    g.customStop      = H->configInt(ini, "railphysics", "customstop", 1);
+    g.accel           = CfgInt(ini, "accel", 1);
+    g.brake           = CfgInt(ini, "brake", 1);
+    g.slope           = CfgInt(ini, "slope", 1);
+    g.fuel            = CfgInt(ini, "fuel", 1);
+    g.curves          = CfgInt(ini, "curves", 1);
+    g.stations        = CfgInt(ini, "stations", 1);
+    g.smoothStop      = CfgInt(ini, "smoothstop", 1);
+    g.customStop      = CfgInt(ini, "customstop", 1);
     g.customsEntry    = CfgFloat(ini, "customs_entry_kmh", 50.0f);
     g.stopRelease     = CfgFloat(ini, "stop_release_kmh", 15.0f);
     if (g.stopRelease < 3.0f) g.stopRelease = 3.0f;     // 0 would re-create the stall
     g.stationLimit    = CfgFloat(ini, "station_limit_kmh", 30.0f);
     g.curveLat        = CfgFloat(ini, "curve_lateral_ms2", 2.8f);
+    g.curveLatFreight = CfgFloat(ini, "curve_lateral_freight_ms2", 0.75f * g.curveLat);
+    g.curveLatTilt    = CfgFloat(ini, "curve_lateral_tilt_ms2", 1.5f * g.curveLat);
     g.curveMargin     = CfgFloat(ini, "curve_brake_margin", 1.25f);
     g.curveLookahead  = CfgFloat(ini, "curve_lookahead_m", 1200.0f);
-    g.logCurves       = H->configInt(ini, "railphysics", "log_curves", 0);
+    g.logCurves       = CfgInt(ini, "log_curves", 0);
     g.mu              = CfgFloat(ini, "adhesion_mu", 0.30f);
     g.powerScale      = CfgFloat(ini, "power_scale", 1.0f);
     if (g.powerScale < 0.1f || g.powerScale > 5.0f)
@@ -2448,13 +2539,13 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const TsmHost* host, TsmPlugi
     g.serviceBrake    = CfgFloat(ini, "service_brake_ms2", 0.8f);
     g.emergencyBrake  = CfgFloat(ini, "emergency_brake_ms2", 1.3f);
     g.freightBrake    = CfgFloat(ini, "freight_brake_ms2", 0.8f);
-    g.bogies          = H->configInt(ini, "railphysics", "bogies", 1);
-    g.tilt            = H->configInt(ini, "railphysics", "tilt", 1);
+    g.bogies          = CfgInt(ini, "bogies", 1);
+    g.tilt            = CfgInt(ini, "tilt", 1);
     g.tiltMax         = CfgFloat(ini, "tilt_max_deg", 5.0f);
     g.tiltGain        = CfgFloat(ini, "tilt_gain", 0.5f);
     g.tiltMinKmh      = CfgFloat(ini, "tilt_min_kmh", 80.0f);
     g.tiltRate        = CfgFloat(ini, "tilt_rate_deg_s", 4.0f);
-    g.tiltFreight     = H->configInt(ini, "railphysics", "tilt_freight", 0);
+    g.tiltFreight     = CfgInt(ini, "tilt_freight", 0);
     if (g.tiltMax < 0.0f)  g.tiltMax = 0.0f;
     if (g.tiltMax > 12.0f) g.tiltMax = 12.0f;           // a rigid car past this lifts off the rail
     if (g.tiltRate < 0.5f) g.tiltRate = 0.5f;
@@ -2465,8 +2556,8 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const TsmHost* host, TsmPlugi
     g.loadMax         = CfgFloat(ini, "fuel_load_max", 1.0f);
     g.electricLoadScale = CfgFloat(ini, "electric_load_scale", 1.0f);
     g.gridBoost       = CfgFloat(ini, "grid_boost", 1.0f);
-    g.logPhysics      = H->configInt(ini, "railphysics", "log_physics", 0);
-    g.logDecisions    = H->configInt(ini, "railphysics", "log_decisions", 0);
+    g.logPhysics      = CfgInt(ini, "log_physics", 0);
+    g.logDecisions    = CfgInt(ini, "log_decisions", 0);
 
     if (g_engine)
         g_GetFullPath = (t_GetFullPath)GetProcAddress(g_engine, "?C3DPath_GetFullPath@@YAXPEADPEBD@Z");
@@ -2597,6 +2688,10 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const TsmHost* host, TsmPlugi
         return 1;
     }
 
+    if (g.curves)
+        Logf("railphysics  curves: freight %.1f, passenger %.1f, tilting %.1f m/s2%s",
+             g.curveLatFreight, g.curveLat, g.curveLatTilt,
+             g_tiltLive ? "" : " (nothing tilts: tilt is off)");
     Logf("railphysics  %d subsystem(s) patched", patched);
     return 0;
 }

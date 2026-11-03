@@ -88,3 +88,7 @@ Game functions called: total mass `0x140698E70`, total power
 
 The raw reports are in [findings/](findings/): vanilla physics
 (01), routes and curves (02), stations (03), stops (04), grid feed (05).
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

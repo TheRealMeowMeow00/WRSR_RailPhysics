@@ -234,3 +234,7 @@ site C and consumes the *unclamped* limit; harmless (it only ever lowers d24 tow
 obstacle speed). The service-brake block (0x1406a83ef) is what will execute our curve
 braking: decel = `100/(3·divisor)` km/h/s — the curve-limit computation should budget
 braking distance with that rate (or the emergency ×6.67 rate if [RSI+0x5df] is set).
+
+---
+
+*Part of [RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics) by TheRealMeowMeow00, GPL v3. Building on these findings? Credit them — see [Building on RailPhysics](https://github.com/TheRealMeowMeow00/WRSR_RailPhysics#building-on-railphysics).*

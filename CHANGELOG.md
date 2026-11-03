@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.0.2 - 2026-11-03
+
+### Fixed
+
+- **Settings under Republic Mod Loader.** The plugin reads `railphysics.ini`
+  from the folder its DLL is in. Under RML the loader's own lookup found no ini
+  and every setting fell back to its default; under tesmioloader it is the
+  same file as before. The loader log names the file it read.
+- The Workshop item keeps `railphysics.dll` and `railphysics.ini` in
+  `plugins/`, where RML looks for a plugin.
+
+## 2.0.1 — 2026-09-27
+
+### Changed
+
+- **Curve speeds by class.** Freight, passenger and tilting trains each have
+  their own lateral limit: `curve_lateral_freight_ms2` (2.1),
+  `curve_lateral_ms2` (2.8) and `curve_lateral_tilt_ms2` (4.2) — the real
+  ratios 0.75 : 1 : 1.5, scaled for the game's compact maps. A tilting train
+  is a passenger train while `tilt` is on, and it earns its allowance as it
+  leans: none below `tilt_min_kmh`, all of it 40 km/h above, so in station
+  throats it is a passenger train like any other. A CR400 with tilt on takes
+  an R 2000 m curve at 330 km/h and R 1000 m at 233; freight slows more in
+  tight curves. Left out of the ini, the freight and tilting values are 0.75x
+  and 1.5x of `curve_lateral_ms2`.
+
 ## 2.0.0 — 2026-09-27
 
 A rewrite of how trains approach curves, stations, customs and stops, and two
